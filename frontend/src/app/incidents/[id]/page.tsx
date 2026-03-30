@@ -2,11 +2,11 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getIncident, updateIncident, addNote, listTasks, createTask, updateTask } from "@/lib/api";
+import { getIncident, updateIncident, addNote, listTasks, createTask, updateTask, api } from "@/lib/api";
 import { IncidentTimeline } from "@/components/incidents/IncidentTimeline";
 import { SeverityBadge, StatusBadge, TaskStatusBadge } from "@/components/ui/Badge";
 import { format } from "date-fns";
-import { CheckSquare, MessageSquare, Users, ChevronDown, Plus } from "lucide-react";
+import { CheckSquare, MessageSquare, Users, ChevronDown, Plus, FileText, Download, RefreshCw } from "lucide-react";
 import type { Incident, Task, IncidentStatus, TaskStatus } from "@/lib/types";
 
 const STATUSES: IncidentStatus[] = ["new", "active", "stable", "resolved", "closed"];
@@ -14,7 +14,7 @@ const STATUSES: IncidentStatus[] = ["new", "active", "stable", "resolved", "clos
 export default function IncidentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"timeline" | "tasks" | "participants">("timeline");
+  const [tab, setTab] = useState<"timeline" | "tasks" | "participants" | "postmortem">("timeline");
   const [noteText, setNoteText] = useState("");
   const [submittingNote, setSubmittingNote] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -111,7 +111,7 @@ export default function IncidentDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-800 mb-5">
-        {(["timeline", "tasks", "participants"] as const).map((t) => (
+        {(["timeline", "tasks", "participants", "postmortem"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -122,6 +122,7 @@ export default function IncidentDetailPage() {
             {t === "timeline" && <MessageSquare size={13} className="inline mr-1.5" />}
             {t === "tasks" && <CheckSquare size={13} className="inline mr-1.5" />}
             {t === "participants" && <Users size={13} className="inline mr-1.5" />}
+            {t === "postmortem" && <FileText size={13} className="inline mr-1.5" />}
             {t}
           </button>
         ))}
@@ -204,6 +205,144 @@ export default function IncidentDetailPage() {
           ))}
           {incident.participants.length === 0 && <p className="text-gray-600 text-sm">No participants yet.</p>}
         </div>
+      )}
+
+      {/* Postmortem */}
+      {tab === "postmortem" && <PostmortemTab incidentId={id} />}
+    </div>
+  );
+}
+
+function PostmortemTab({ incidentId }: { incidentId: string }) {
+  const qc = useQueryClient();
+  const [editMode, setEditMode] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const { data: postmortem, isLoading } = useQuery<{ id: string; content: string; updated_at: string } | null>({
+    queryKey: ["postmortem", incidentId],
+    queryFn: () =>
+      api.get(`/postmortems/${incidentId}`).then((r) => r.data).catch((e) => {
+        if (e.response?.status === 404) return null;
+        throw e;
+      }),
+  });
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      await api.post(`/postmortems/${incidentId}`);
+      qc.invalidateQueries({ queryKey: ["postmortem", incidentId] });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/postmortems/${incidentId}`, { content: editContent });
+      qc.invalidateQueries({ queryKey: ["postmortem", incidentId] });
+      setEditMode(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!postmortem) return;
+    const blob = new Blob([postmortem.content], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `postmortem-${incidentId}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (isLoading) return <p className="text-gray-600 text-sm">Loading…</p>;
+
+  if (!postmortem) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <FileText size={40} className="text-gray-700 mb-4" />
+        <p className="text-white font-medium mb-1">No postmortem yet</p>
+        <p className="text-gray-500 text-sm mb-6 max-w-sm">
+          Generate an AI-structured postmortem from the incident timeline, tasks, and participants.
+        </p>
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg px-5 py-2.5 text-sm font-medium"
+        >
+          <RefreshCw size={14} className={generating ? "animate-spin" : ""} />
+          {generating ? "Generating…" : "Generate Postmortem"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-gray-500">
+          Last updated {format(new Date(postmortem.updated_at), "MMM d, yyyy HH:mm")}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white border border-gray-700 rounded px-3 py-1.5 transition-colors"
+          >
+            <RefreshCw size={12} className={generating ? "animate-spin" : ""} />
+            Regenerate
+          </button>
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white border border-gray-700 rounded px-3 py-1.5 transition-colors"
+          >
+            <Download size={12} /> Download .md
+          </button>
+          {!editMode && (
+            <button
+              onClick={() => { setEditContent(postmortem.content); setEditMode(true); }}
+              className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 rounded px-3 py-1.5 transition-colors"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      </div>
+
+      {editMode ? (
+        <div>
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={30}
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-300 font-mono focus:outline-none focus:border-blue-500 resize-none"
+          />
+          <div className="flex gap-3 mt-3">
+            <button
+              onClick={() => setEditMode(false)}
+              className="bg-gray-700 hover:bg-gray-600 text-white rounded px-4 py-2 text-sm font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <pre className="bg-gray-900 border border-gray-800 rounded-xl p-5 text-xs text-gray-300 font-mono whitespace-pre-wrap leading-relaxed overflow-auto max-h-[70vh]">
+          {postmortem.content}
+        </pre>
       )}
     </div>
   );

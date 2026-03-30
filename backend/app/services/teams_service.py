@@ -79,11 +79,27 @@ def _build_adaptive_card(
 
     actions = []
     if incident_id:
-        actions.append({
-            "type": "Action.OpenUrl",
-            "title": "View Incident",
-            "url": f"{base_url}/incidents/{incident_id}",
-        })
+        from app.routers.integrations import create_action_token
+        ack_token = create_action_token(incident_id, "acknowledge")
+        resolve_token = create_action_token(incident_id, "resolve")
+        api_base = base_url.replace(":3000", ":8000")  # point action URLs at the API
+        actions = [
+            {
+                "type": "Action.OpenUrl",
+                "title": "✅ Acknowledge",
+                "url": f"{api_base}/integrations/teams/action?token={ack_token}",
+            },
+            {
+                "type": "Action.OpenUrl",
+                "title": "🔒 Resolve",
+                "url": f"{api_base}/integrations/teams/action?token={resolve_token}",
+            },
+            {
+                "type": "Action.OpenUrl",
+                "title": "View in Overwatch →",
+                "url": f"{base_url}/incidents/{incident_id}",
+            },
+        ]
 
     card: dict = {
         "type": "message",

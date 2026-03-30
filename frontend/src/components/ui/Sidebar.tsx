@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Bell, Radio, Settings, Shield, Server, Clock, LogOut } from "lucide-react";
+import { AlertTriangle, Bell, Radio, Settings, Shield, Server, Clock, LogOut, BarChart2, BookOpen, Wrench, Zap } from "lucide-react";
 import { clsx } from "clsx";
 import { useQuery } from "@tanstack/react-query";
 import { getMe } from "@/lib/api";
@@ -11,6 +11,10 @@ const nav = [
   { href: "/incidents", label: "Incidents", icon: AlertTriangle },
   { href: "/services", label: "Services", icon: Server },
   { href: "/oncall", label: "On-Call", icon: Clock },
+  { href: "/metrics", label: "Metrics", icon: BarChart2 },
+  { href: "/templates", label: "Templates", icon: BookOpen },
+  { href: "/escalations", label: "Escalations", icon: Zap },
+  { href: "/maintenance", label: "Maintenance", icon: Wrench },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/channels", label: "Channels", icon: Radio },
   { href: "/settings", label: "Settings", icon: Settings },

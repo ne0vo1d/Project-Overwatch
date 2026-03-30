@@ -3,12 +3,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_tables
-from app.routers import auth, incidents, tasks, channels, notifications, ingest, services, oncall
+from app.routers import (
+    auth, incidents, tasks, channels, notifications,
+    ingest, services, oncall, postmortems, escalations,
+    templates, maintenance, metrics, status, integrations,
+)
+from app.services.escalation_service import start_background_task
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await create_tables()
+    start_background_task()
     yield
 
 
@@ -35,6 +41,13 @@ app.include_router(notifications.router)
 app.include_router(ingest.router)
 app.include_router(services.router)
 app.include_router(oncall.router)
+app.include_router(postmortems.router)
+app.include_router(escalations.router)
+app.include_router(templates.router)
+app.include_router(maintenance.router)
+app.include_router(metrics.router)
+app.include_router(status.router)
+app.include_router(integrations.router)
 
 
 @app.get("/health")

@@ -8,10 +8,36 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.channel import NotificationChannel, ChannelType
+from app.models.maintenance import MaintenanceWindow
 from app.models.notification import Notification, NotificationStatus
 from app.services import slack_service, teams_service, email_service
 from app.services.pubsub import publish
 from app.config import settings
+
+
+async def _is_in_maintenance(
+    db: AsyncSession,
+    topic: str,
+    service_id: str | None,
+) -> bool:
+    """Return True if an active maintenance window covers this topic/service right now."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(MaintenanceWindow).where(
+            MaintenanceWindow.is_active == True,
+            MaintenanceWindow.start_at <= now,
+            MaintenanceWindow.end_at >= now,
+        )
+    )
+    windows = result.scalars().all()
+    for w in windows:
+        # A window with no filters silences everything
+        no_filters = not w.service_ids and not w.topics
+        topic_match = topic in (w.topics or [])
+        service_match = service_id and service_id in (w.service_ids or [])
+        if no_filters or topic_match or service_match:
+            return True
+    return False
 
 
 async def dispatch(
@@ -24,12 +50,17 @@ async def dispatch(
     incident_id: str | None = None,
     severity: str | None = None,
     status: str | None = None,
+    service_id: str | None = None,
 ) -> list[Notification]:
     """
-    1. Publish to SSE pub/sub (instant, in-memory)
-    2. Find all active channels matching the topic and severity
-    3. Dispatch to each channel and record the result
+    1. Check maintenance windows — silently drop if covered
+    2. Publish to SSE pub/sub (instant, in-memory)
+    3. Find all active channels matching the topic and severity
+    4. Dispatch to each channel and record the result
     """
+    if await _is_in_maintenance(db, topic, service_id):
+        return []  # silenced
+
     # Always publish to SSE broker
     await publish(topic, {
         "type": "notification",
