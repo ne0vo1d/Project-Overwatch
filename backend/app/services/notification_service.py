@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.channel import NotificationChannel, ChannelType
 from app.models.notification import Notification, NotificationStatus
-from app.services import slack_service, teams_service
+from app.services import slack_service, teams_service, email_service
 from app.services.pubsub import publish
 from app.config import settings
 
@@ -152,6 +152,9 @@ async def _send_to_channel(
     elif channel.type == ChannelType.ntfy:
         return await _send_ntfy(cfg, title, message, tags)
 
+    elif channel.type == ChannelType.email:
+        return await _send_email(cfg, title, message, severity, status, incident_id, tags, base_url)
+
     return False, f"Unknown channel type: {channel.type}"
 
 
@@ -190,6 +193,39 @@ async def _send_generic_webhook(
             return False, f"Webhook returned {resp.status_code}"
     except Exception as e:
         return False, str(e)
+
+
+async def _send_email(
+    cfg: dict,
+    title: str,
+    message: str,
+    severity: str | None,
+    status: str | None,
+    incident_id: str | None,
+    tags: list[str],
+    base_url: str,
+) -> tuple[bool, str | None]:
+    api_key = cfg.get("api_key")
+    if not api_key:
+        return False, "Email channel missing api_key"
+    to_emails = cfg.get("to_emails", [])
+    if not to_emails:
+        return False, "Email channel missing to_emails"
+    from_email = cfg.get("from_email", "overwatch@example.com")
+    from_name = cfg.get("from_name", "Project Overwatch")
+    return await email_service.send_email(
+        api_key=api_key,
+        to_emails=to_emails,
+        from_email=from_email,
+        from_name=from_name,
+        title=title,
+        message=message,
+        severity=severity,
+        status=status,
+        incident_id=incident_id,
+        tags=tags,
+        base_url=base_url,
+    )
 
 
 async def _send_ntfy(

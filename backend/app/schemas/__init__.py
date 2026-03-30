@@ -3,6 +3,8 @@ from .incident import IncidentCreate, IncidentRead, IncidentUpdate, IncidentSumm
 from .task import TaskCreate, TaskRead, TaskUpdate
 from .channel import ChannelCreate, ChannelRead, ChannelUpdate
 from .notification import NotificationCreate, NotificationRead, NotificationPublish
+from .service import ServiceCreate, ServiceRead, ServiceUpdate, ServiceMemberRead
+from .oncall import OnCallScheduleCreate, OnCallScheduleRead, OnCallScheduleUpdate, OnCallEntryCreate, OnCallEntryRead, CurrentOnCall
 
 __all__ = [
     "UserCreate", "UserRead", "UserUpdate", "Token",
@@ -10,4 +12,7 @@ __all__ = [
     "TaskCreate", "TaskRead", "TaskUpdate",
     "ChannelCreate", "ChannelRead", "ChannelUpdate",
     "NotificationCreate", "NotificationRead", "NotificationPublish",
+    "ServiceCreate", "ServiceRead", "ServiceUpdate", "ServiceMemberRead",
+    "OnCallScheduleCreate", "OnCallScheduleRead", "OnCallScheduleUpdate",
+    "OnCallEntryCreate", "OnCallEntryRead", "CurrentOnCall",
 ]

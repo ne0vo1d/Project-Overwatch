@@ -11,6 +11,7 @@ class ChannelType(str, enum.Enum):
     teams = "teams"
     webhook = "webhook"
     ntfy = "ntfy"
+    email = "email"
 
 
 class NotificationChannel(Base):

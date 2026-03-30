@@ -38,6 +38,10 @@ services:
       TEAMS_DEFAULT_WEBHOOK_URL: ${TEAMS_DEFAULT_WEBHOOK_URL:-}
       NTFY_BASE_URL: ${NTFY_BASE_URL:-https://ntfy.sh}
       NTFY_TOKEN: ${NTFY_TOKEN:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-alerts@example.com}
+      SENDGRID_FROM_NAME: ${SENDGRID_FROM_NAME:-Project Overwatch}
+      INGEST_SECRET: ${INGEST_SECRET:-}
     depends_on:
       db:
         condition: service_healthy

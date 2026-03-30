@@ -4,6 +4,8 @@ from .task import Task
 from .timeline import TimelineEvent
 from .channel import NotificationChannel
 from .notification import Notification
+from .service import Service, ServiceMember
+from .oncall import OnCallSchedule, OnCallEntry
 
 __all__ = [
     "User",
@@ -13,4 +15,8 @@ __all__ = [
     "TimelineEvent",
     "NotificationChannel",
     "Notification",
+    "Service",
+    "ServiceMember",
+    "OnCallSchedule",
+    "OnCallEntry",
 ]

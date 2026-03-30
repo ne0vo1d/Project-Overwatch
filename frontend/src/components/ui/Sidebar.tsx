@@ -1,12 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertTriangle, Bell, Radio, Settings, Shield } from "lucide-react";
+import { AlertTriangle, Bell, Radio, Settings, Shield, Server, Clock } from "lucide-react";
 import { clsx } from "clsx";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: Shield },
   { href: "/incidents", label: "Incidents", icon: AlertTriangle },
+  { href: "/services", label: "Services", icon: Server },
+  { href: "/oncall", label: "On-Call", icon: Clock },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/channels", label: "Channels", icon: Radio },
   { href: "/settings", label: "Settings", icon: Settings },

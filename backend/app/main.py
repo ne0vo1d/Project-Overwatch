@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_tables
-from app.routers import auth, incidents, tasks, channels, notifications
+from app.routers import auth, incidents, tasks, channels, notifications, ingest, services, oncall
 
 
 @asynccontextmanager
@@ -32,6 +32,9 @@ app.include_router(incidents.router)
 app.include_router(tasks.router)
 app.include_router(channels.router)
 app.include_router(notifications.router)
+app.include_router(ingest.router)
+app.include_router(services.router)
+app.include_router(oncall.router)
 
 
 @app.get("/health")

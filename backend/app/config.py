@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     ntfy_base_url: str = "https://ntfy.sh"
     ntfy_token: Optional[str] = None
 
+    # SendGrid
+    sendgrid_api_key: Optional[str] = None
+    sendgrid_from_email: str = "overwatch@example.com"
+    sendgrid_from_name: str = "Project Overwatch"
+
+    # Ingest
+    ingest_secret: Optional[str] = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

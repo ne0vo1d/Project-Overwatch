@@ -31,6 +31,7 @@ class Incident(Base):
     status: Mapped[IncidentStatus] = mapped_column(SAEnum(IncidentStatus), nullable=False, default=IncidentStatus.new)
     topic: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    service_id: Mapped[str | None] = mapped_column(ForeignKey("services.id"), nullable=True)
     commander_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
@@ -40,6 +41,7 @@ class Incident(Base):
     )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    service: Mapped["Service | None"] = relationship("Service", foreign_keys=[service_id])  # noqa: F821
     commander: Mapped["User | None"] = relationship(  # noqa: F821
         "User", back_populates="commanded_incidents", foreign_keys=[commander_id]
     )

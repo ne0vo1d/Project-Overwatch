@@ -6,8 +6,54 @@ from sqlalchemy.orm import selectinload
 from app.models.incident import Incident, IncidentParticipant, IncidentStatus
 from app.models.timeline import TimelineEvent
 from app.models.user import User
+from app.models.service import Service, ServiceMember
+from app.models.oncall import OnCallSchedule, OnCallEntry
 from app.schemas.incident import IncidentCreate, IncidentUpdate
 from app.services import notification_service
+
+
+async def _resolve_oncall_commander(db: AsyncSession, service_id: str | None) -> str | None:
+    """Return the user_id of the current primary on-call person for a service, if any."""
+    if not service_id:
+        return None
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(OnCallEntry)
+        .join(OnCallSchedule, OnCallEntry.schedule_id == OnCallSchedule.id)
+        .where(
+            OnCallSchedule.service_id == service_id,
+            OnCallSchedule.is_active == True,
+            OnCallEntry.role == "primary",
+            OnCallEntry.start_at <= now,
+            OnCallEntry.end_at >= now,
+        )
+        .limit(1)
+    )
+    entry = result.scalar_one_or_none()
+    return entry.user_id if entry else None
+
+
+async def _auto_assemble_participants(db: AsyncSession, incident: Incident) -> list[IncidentParticipant]:
+    """Auto-add service members and on-call person as participants."""
+    if not incident.service_id:
+        return []
+
+    result = await db.execute(
+        select(ServiceMember).where(ServiceMember.service_id == incident.service_id)
+    )
+    members = result.scalars().all()
+
+    existing_ids = {p.user_id for p in incident.participants}
+    new_participants = []
+    for member in members:
+        if member.user_id in existing_ids:
+            continue
+        role = "oncall" if member.role == "oncall" else "responder"
+        p = IncidentParticipant(incident_id=incident.id, user_id=member.user_id, role=role)
+        db.add(p)
+        new_participants.append(p)
+        existing_ids.add(member.user_id)
+    return new_participants
 
 
 async def create_incident(
@@ -15,13 +61,19 @@ async def create_incident(
     data: IncidentCreate,
     creator: User,
 ) -> Incident:
+    # Resolve commander: explicit > on-call > creator
+    commander_id = data.commander_id
+    if not commander_id and hasattr(data, "service_id"):
+        commander_id = await _resolve_oncall_commander(db, getattr(data, "service_id", None))
+    commander_id = commander_id or creator.id
+
     incident = Incident(
         title=data.title,
         description=data.description,
         severity=data.severity,
-        topic=data.topic or f"incidents",
+        topic=data.topic or "incidents",
         tags=data.tags,
-        commander_id=data.commander_id or creator.id,
+        commander_id=commander_id,
     )
     db.add(incident)
     await db.flush()
@@ -30,7 +82,7 @@ async def create_incident(
     participant = IncidentParticipant(
         incident_id=incident.id,
         user_id=creator.id,
-        role="commander" if not data.commander_id or data.commander_id == creator.id else "reporter",
+        role="commander" if commander_id == creator.id else "reporter",
     )
     db.add(participant)
 
@@ -43,6 +95,10 @@ async def create_incident(
         metadata_={"severity": incident.severity.value, "status": incident.status.value},
     )
     db.add(event)
+
+    # Auto-assemble service team members
+    await _auto_assemble_participants(db, incident)
+
     await db.commit()
     await db.refresh(incident)
 
