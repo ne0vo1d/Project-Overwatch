@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { AlertTriangle, Bell, Radio, Settings, Shield, Server, Clock } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { AlertTriangle, Bell, Radio, Settings, Shield, Server, Clock, LogOut } from "lucide-react";
 import { clsx } from "clsx";
+import { useQuery } from "@tanstack/react-query";
+import { getMe } from "@/lib/api";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: Shield },
@@ -16,13 +18,27 @@ const nav = [
 
 export function Sidebar() {
   const path = usePathname();
+  const router = useRouter();
+
+  const { data: user } = useQuery({
+    queryKey: ["me"],
+    queryFn: () => getMe().then((r) => r.data),
+    retry: false,
+  });
+
+  const handleSignOut = () => {
+    localStorage.removeItem("token");
+    router.push("/login");
+  };
+
   return (
     <aside className="w-56 bg-[#161b22] border-r border-gray-800 flex flex-col py-6 px-3 shrink-0">
       <div className="flex items-center gap-2 px-3 mb-8">
         <Shield className="text-red-500" size={22} />
         <span className="font-bold text-white text-lg tracking-tight">Overwatch</span>
       </div>
-      <nav className="flex flex-col gap-1">
+
+      <nav className="flex flex-col gap-1 flex-1">
         {nav.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
@@ -39,6 +55,23 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
+
+      {/* User info + sign out */}
+      <div className="mt-4 pt-4 border-t border-gray-800">
+        {user && (
+          <div className="px-3 mb-2">
+            <p className="text-xs font-medium text-white truncate">{user.name}</p>
+            <p className="text-xs text-gray-500 truncate">{user.email}</p>
+          </div>
+        )}
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+        >
+          <LogOut size={16} />
+          Sign Out
+        </button>
+      </div>
     </aside>
   );
 }

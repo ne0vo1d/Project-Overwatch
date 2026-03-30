@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
-import { Sidebar } from "@/components/ui/Sidebar";
+import { AppShell } from "@/components/ui/AppShell";
 
 export const metadata: Metadata = {
   title: "Project Overwatch",
@@ -13,10 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen bg-[#0f1117]">
         <Providers>
-          <div className="flex h-screen">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto p-6">{children}</main>
-          </div>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

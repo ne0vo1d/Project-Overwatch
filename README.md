@@ -140,11 +140,11 @@ docker compose up
 
 ### First steps
 
-1. Open http://localhost:3000/settings
-2. Register an account
-3. Copy your **API key** from the `/auth/me` response
-4. Add your first notification channel at `/channels`
-5. Create an incident — watch it land in Slack/Teams/email
+1. Open **http://localhost:3000/login**
+2. Click **Create Account**, fill in your name, email and password, then sign in — you'll be redirected to the dashboard automatically
+3. Go to **Settings** (`/settings`) to copy your **API key** (one-click copy button)
+4. Go to **Channels** (`/channels`) and add a Slack webhook, Teams webhook, or SendGrid email channel
+5. Go to **Incidents** (`/incidents`) and create your first incident — it will be dispatched to every matching channel immediately
 
 ---
 
