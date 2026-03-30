@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: overwatch
+      POSTGRES_PASSWORD: overwatch
+      POSTGRES_DB: overwatch
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U overwatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://overwatch:overwatch@db:5432/overwatch
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      DEBUG: ${DEBUG:-false}
+      CORS_ORIGINS: '["http://localhost:3000"]'
+      SLACK_DEFAULT_WEBHOOK_URL: ${SLACK_DEFAULT_WEBHOOK_URL:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      TEAMS_DEFAULT_WEBHOOK_URL: ${TEAMS_DEFAULT_WEBHOOK_URL:-}
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-https://ntfy.sh}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
